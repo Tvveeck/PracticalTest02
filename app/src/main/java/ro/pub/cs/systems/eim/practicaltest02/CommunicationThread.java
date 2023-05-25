@@ -45,94 +45,61 @@ public class CommunicationThread extends Thread {
             // Create BufferedReader and PrintWriter instances for reading from and writing to the socket
             BufferedReader bufferedReader = Utilities.getReader(socket);
             PrintWriter printWriter = Utilities.getWriter(socket);
-            Log.i(Constants.TAG, "[COMMUNICATION THREAD] Waiting for parameters from client (city / information type!");
+            Log.i(Constants.TAG, "[COMMUNICATION THREAD] Waiting for parameters from client !");
 
             // Read the city and informationType values sent by the client
-            String city = bufferedReader.readLine();
-            String informationType = bufferedReader.readLine();
-            if (city == null || city.isEmpty() || informationType == null || informationType.isEmpty()) {
-                Log.e(Constants.TAG, "[COMMUNICATION THREAD] Error receiving parameters from client (city / information type!");
+            String key = bufferedReader.readLine();
+            String value = bufferedReader.readLine();
+            String method = bufferedReader.readLine();
+            if (key == null || key.isEmpty() || value == null || value.isEmpty() || method == null || method.isEmpty()) {
+                Log.e(Constants.TAG, "[COMMUNICATION THREAD] Error receiving parameters from client !");
                 return;
             }
 
             // It checks whether the serverThread has already received the weather forecast information for the given city.
             HashMap<String, DataModel> data = serverThread.getData();
             DataModel dataModel = null;
-            if (data.containsKey(city)) {
-                Log.i(Constants.TAG, "[COMMUNICATION THREAD] Getting the information from the cache...");
-                dataModel = data.get(city);
-            } else {
-                Log.i(Constants.TAG, "[COMMUNICATION THREAD] Getting the information from the webservice...");
-                HttpClient httpClient = new DefaultHttpClient();
-                String pageSourceCode = "";
 
-                // make the HTTP request to the web service
-                HttpGet httpGet = new HttpGet(Constants.WEB_SERVICE_ADDRESS + "?q=" + city + "&APPID=" + Constants.WEB_SERVICE_API_KEY + "&units=" + Constants.UNITS);
-                HttpResponse httpGetResponse = httpClient.execute(httpGet);
-                HttpEntity httpGetEntity = httpGetResponse.getEntity();
-                if (httpGetEntity != null) {
-                    pageSourceCode = EntityUtils.toString(httpGetEntity);
-                }
-                if (pageSourceCode == null) {
-                    Log.e(Constants.TAG, "[COMMUNICATION THREAD] Error getting the information from the webservice!");
-                    return;
-                } else Log.i(Constants.TAG, pageSourceCode);
+            Log.i(Constants.TAG, "[COMMUNICATION THREAD] Getting the information from the webservice...");
+            HttpClient httpClient = new DefaultHttpClient();
+            String pageSourceCode = "";
 
-                // Parse the page source code into a JSONObject and extract the needed information
-                JSONObject content = new JSONObject(pageSourceCode);
-                JSONArray weatherArray = content.getJSONArray(Constants.WEATHER);
-                JSONObject weather;
-                StringBuilder condition = new StringBuilder();
-                for (int i = 0; i < weatherArray.length(); i++) {
-                    weather = weatherArray.getJSONObject(i);
-                    condition.append(weather.getString(Constants.MAIN)).append(" : ").append(weather.getString(Constants.DESCRIPTION));
+            // make the HTTP request to the web service
+            HttpGet httpGet = new HttpGet(Constants.WEB_SERVICE_ADDRESS);
+            HttpResponse httpGetResponse = httpClient.execute(httpGet);
+            HttpEntity httpGetEntity = httpGetResponse.getEntity();
 
-                    if (i < weatherArray.length() - 1) {
-                        condition.append(";");
-                    }
-                }
-                JSONObject main = content.getJSONObject(Constants.MAIN);
-                String temperature = main.getString(Constants.TEMP);
-                String pressure = main.getString(Constants.PRESSURE);
-                String humidity = main.getString(Constants.HUMIDITY);
-                JSONObject wind = content.getJSONObject(Constants.WIND);
-                String windSpeed = wind.getString(Constants.SPEED);
-
-                // Create a WeatherForecastInformation object with the information extracted from the JSONObject
-                dataModel = new DataModel(temperature, windSpeed, condition.toString(), pressure, humidity);
-
-                // Cache the information for the given city
-                serverThread.setData(city, dataModel);
+            if (httpGetEntity != null) {
+                pageSourceCode = EntityUtils.toString(httpGetEntity);
             }
-
-            if (dataModel == null) {
-                Log.e(Constants.TAG, "[COMMUNICATION THREAD] Weather Forecast Information is null!");
+            if (pageSourceCode == null) {
+                Log.e(Constants.TAG, "[COMMUNICATION THREAD] Error getting the information from the webservice!");
                 return;
-            }
+            } else Log.i(Constants.TAG, pageSourceCode);
 
-            // Send the information back to the client
-            String result;
-            switch (informationType) {
-                case Constants.ALL:
-                    result = dataModel.toString();
-                    break;
-                case Constants.TEMPERATURE:
-                    result = dataModel.getTemperature();
-                    break;
-                case Constants.WIND_SPEED:
-                    result = dataModel.getWindSpeed();
-                    break;
-                case Constants.CONDITION:
-                    result = dataModel.getCondition();
-                    break;
-                case Constants.HUMIDITY:
-                    result = dataModel.getHumidity();
-                    break;
-                case Constants.PRESSURE:
-                    result = dataModel.getPressure();
-                    break;
-                default:
-                    result = "[COMMUNICATION THREAD] Wrong information type (all / temperature / wind_speed / condition / humidity / pressure)!";
+            JSONObject content = new JSONObject(pageSourceCode);
+            String time = content.getString("unixtime");
+
+            String result = "none";
+            if("PUT".equals(method)) {
+                Log.i(Constants.TAG, "[COMMUNICATION THREAD] PUT to the server...");
+                serverThread.setData(key, new DataModel(value, time));
+                result = "put successful";
+            } else {
+                if (data.containsKey(key)) {
+                    Log.i(Constants.TAG, "[COMMUNICATION THREAD] Getting the information from the server...");
+                    dataModel = data.get(key);
+
+                    Log.i(Constants.TAG, "[COMMUNICATION THREAD] time is: " + time + " and dataModel time is: " + dataModel.getTime());
+
+                    if(Long.parseLong(time) - Long.parseLong(dataModel.getTime()) > 10) {
+                        result = "expired\n";
+                    } else {
+                        result = dataModel.getValue();
+                    }
+                } else {
+                    result = "none\n";
+                }
             }
 
             // Send the result back to the client

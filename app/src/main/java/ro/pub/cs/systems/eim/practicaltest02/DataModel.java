@@ -4,43 +4,28 @@ import androidx.annotation.NonNull;
 
 public class DataModel {
 
-    private final String temperature;
-    private final String windSpeed;
-    private final String condition;
-    private final String pressure;
-    private final String humidity;
+    private final String value;
 
-    public DataModel(String temperature, String windSpeed, String condition, String pressure, String humidity) {
-        this.temperature = temperature;
-        this.windSpeed = windSpeed;
-        this.condition = condition;
-        this.pressure = pressure;
-        this.humidity = humidity;
+    public String getValue() {
+        return value;
     }
 
-    public String getTemperature() {
-        return temperature;
+    public String getTime() {
+        return time;
     }
 
-    public String getWindSpeed() {
-        return windSpeed;
+    private final String time;
+
+
+    public DataModel(String value, String time) {
+       this.value = value;
+       this.time = time;
     }
 
-    public String getCondition() {
-        return condition;
-    }
-
-    public String getPressure() {
-        return pressure;
-    }
-
-    public String getHumidity() {
-        return humidity;
-    }
 
     @NonNull
     @Override
     public String toString() {
-        return "WeatherForecastInformation{" + "temperature='" + temperature + '\'' + ", windSpeed='" + windSpeed + '\'' + ", condition='" + condition + '\'' + ", pressure='" + pressure + '\'' + ", humidity='" + humidity + '\'' + '}';
+        return "Info{" + value + ' ' + time +'}';
     }
 }

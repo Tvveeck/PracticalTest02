@@ -18,14 +18,17 @@ public class ClientThread extends Thread {
     private final String informationType;
     private final TextView weatherForecastTextView;
 
+    private final String method;
+
     private Socket socket;
 
-    public ClientThread(String address, int port, String city, String informationType, TextView weatherForecastTextView) {
+    public ClientThread(String address, int port, String city, String informationType, String method, TextView weatherForecastTextView) {
         this.address = address;
         this.port = port;
         this.city = city;
         this.informationType = informationType;
         this.weatherForecastTextView = weatherForecastTextView;
+        this.method = method;
     }
 
     @Override
@@ -43,15 +46,20 @@ public class ClientThread extends Thread {
             printWriter.flush();
             printWriter.println(informationType);
             printWriter.flush();
+            printWriter.println(method);
+            printWriter.flush();
             String weatherInformation;
 
             // reads the weather information from the server
-            while ((weatherInformation = bufferedReader.readLine()) != null) {
-                final String finalizedWeateherInformation = weatherInformation;
+            String response = bufferedReader.readLine();
+            weatherForecastTextView.post(() -> weatherForecastTextView.setText(response));
 
-                // updates the UI with the weather information. This is done using postt() method to ensure it is executed on UI thread
-                weatherForecastTextView.post(() -> weatherForecastTextView.setText(finalizedWeateherInformation));
-            }
+//            while ((weatherInformation = bufferedReader.readLine()) != null) {
+//                final String finalizedWeateherInformation = weatherInformation;
+//
+//                // updates the UI with the weather information. This is done using postt() method to ensure it is executed on UI thread
+//                weatherForecastTextView.post(() -> weatherForecastTextView.setText(finalizedWeateherInformation));
+//            }
         } // if an exception occurs, it is logged
         catch (IOException ioException) {
             Log.e(Constants.TAG, "[CLIENT THREAD] An exception has occurred: " + ioException.getMessage());
